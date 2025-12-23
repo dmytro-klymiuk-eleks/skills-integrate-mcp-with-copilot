@@ -1,40 +1,60 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const activitiesList = document.getElementById("activities-list");
-  const activitySelect = document.getElementById("activity");
-  const signupForm = document.getElementById("signup-form");
-  const messageDiv = document.getElementById("message");
+    // Store activities globally for filtering/sorting
+    let allActivities = {};
 
-  // Function to fetch activities from API
-  async function fetchActivities() {
-    try {
-      const response = await fetch("/activities");
-      const activities = await response.json();
+    // Function to render activities with filters/sorting
+    function renderActivities() {
+      // Get filter/sort values
+      const searchValue = document.getElementById("activity-search").value.toLowerCase();
+      const sortValue = document.getElementById("activity-sort").value;
+
+      // Convert activities to array for sorting/filtering
+      let activityArray = Object.entries(allActivities);
+
+      // Filter by search
+      if (searchValue) {
+        activityArray = activityArray.filter(([name, details]) =>
+          name.toLowerCase().includes(searchValue) ||
+          details.description.toLowerCase().includes(searchValue)
+        );
+      }
+
+      // Sort
+      if (sortValue === "name") {
+        activityArray.sort((a, b) => a[0].localeCompare(b[0]));
+      } else if (sortValue === "spots") {
+        activityArray.sort((a, b) => {
+          const spotsA = a[1].max_participants - a[1].participants.length;
+          const spotsB = b[1].max_participants - b[1].participants.length;
+          return spotsB - spotsA;
+        });
+      }
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = "<option value=''>-- Select an activity --</option>";
 
       // Populate activities list
-      Object.entries(activities).forEach(([name, details]) => {
+      activityArray.forEach(([name, details]) => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
 
-        const spotsLeft =
-          details.max_participants - details.participants.length;
+        const spotsLeft = details.max_participants - details.participants.length;
 
         // Create participants HTML with delete icons instead of bullet points
         const participantsHTML =
           details.participants.length > 0
             ? `<div class="participants-section">
-              <h5>Participants:</h5>
-              <ul class="participants-list">
-                ${details.participants
-                  .map(
-                    (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
-                  )
-                  .join("")}
-              </ul>
-            </div>`
+                <h5>Participants:</h5>
+                <ul class="participants-list">
+                  ${details.participants
+                    .map(
+                      (email) =>
+                        `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">74c</button></li>`
+                    )
+                    .join("")}
+                </ul>
+              </div>`
             : `<p><em>No participants yet</em></p>`;
 
         activityCard.innerHTML = `
@@ -60,6 +80,18 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".delete-btn").forEach((button) => {
         button.addEventListener("click", handleUnregister);
       });
+    }
+  const activitiesList = document.getElementById("activities-list");
+  const activitySelect = document.getElementById("activity");
+  const signupForm = document.getElementById("signup-form");
+  const messageDiv = document.getElementById("message");
+
+  // Function to fetch activities from API
+  async function fetchActivities() {
+    try {
+      const response = await fetch("/activities");
+      allActivities = await response.json();
+      renderActivities();
     } catch (error) {
       activitiesList.innerHTML =
         "<p>Failed to load activities. Please try again later.</p>";
@@ -156,5 +188,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initialize app
+  // Add filter/sort event listeners
+  document.getElementById("activity-search").addEventListener("input", renderActivities);
+  document.getElementById("activity-sort").addEventListener("change", renderActivities);
+
   fetchActivities();
 });
